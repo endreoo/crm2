@@ -6,22 +6,34 @@ export interface Contact {
   company?: string;
   role?: string;
   lastContact?: Date;
+  hotelId?: string;
 }
 
 export interface Hotel {
   id: string;
   name: string;
+  location: string;
   address: string;
-  rating: number;
+  city: string;
+  country: string;
+  capacity?: number;
   rooms: number;
+  rating: number;
+  status: string;
   amenities: string[];
   image: string;
+  google_number_of_reviews?: number;
+  google_review_score?: number;
+  segment?: string;
+  sales_process?: string;
 }
 
 export interface Booking {
   id: string;
   hotelId: string;
   guestId: string;
+  guestName: string;
+  hotelName: string;
   checkIn: Date;
   checkOut: Date;
   roomType: string;
@@ -37,6 +49,7 @@ export interface Guest {
   nationality?: string;
   preferences?: string[];
   vipStatus?: boolean;
+  hotelId?: string;
 }
 
 export interface Ticket {
@@ -48,4 +61,14 @@ export interface Ticket {
   createdAt: Date;
   assignedTo?: string;
   bookingId?: string;
+  hotelId?: string;
+}
+
+export interface ViewProps {
+  hotelId?: string;
+  bookingId?: string;
+  guestId?: string;
+  contactId?: string;
+  ticketId?: string;
+  variant?: 'grid' | 'list';
 }

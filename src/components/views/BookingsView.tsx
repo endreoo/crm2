@@ -1,6 +1,9 @@
-import { Plus, Search, Calendar } from 'lucide-react';
+import { ViewProps, Booking } from '@/types';
+import { api } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { AlertCircle, RefreshCcw, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -10,120 +13,128 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useState } from 'react';
 import BookingDetailsDialog from './BookingDetailsDialog';
 
-interface BookingsViewProps {
-  hotelId?: string;
-  variant?: 'list' | 'grid';
-}
+export default function BookingsView({ hotelId }: ViewProps) {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-export default function BookingsView({ hotelId, variant = 'grid' }: BookingsViewProps) {
-  const [selectedBooking, setSelectedBooking] = useState<any>(null);
-
-  // Placeholder data - will be replaced with API data
-  const bookings = [
-    {
-      id: '1',
-      hotelName: 'Grand Plaza Hotel',
-      guestName: 'Alice Johnson',
-      checkIn: new Date('2024-03-20'),
-      checkOut: new Date('2024-03-25'),
-      roomType: 'Deluxe Suite',
-      status: 'confirmed',
-      totalAmount: 1200,
-    },
-    {
-      id: '2',
-      hotelName: 'Oceanview Resort',
-      guestName: 'Bob Wilson',
-      checkIn: new Date('2024-04-01'),
-      checkOut: new Date('2024-04-05'),
-      roomType: 'Ocean View Room',
-      status: 'pending',
-      totalAmount: 800,
-    },
-  ];
-
-  const filteredBookings = hotelId 
-    ? bookings.filter(booking => booking.hotelId === hotelId)
-    : bookings;
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-500/15 text-green-700 dark:text-green-400';
-      case 'pending':
-        return 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400';
-      case 'cancelled':
-        return 'bg-red-500/15 text-red-700 dark:text-red-400';
-      default:
-        return '';
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const response = await api.bookings.getAll();
+      const filteredBookings = hotelId
+        ? response.filter(booking => booking.hotelId === hotelId)
+        : response;
+      setBookings(filteredBookings);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch bookings. Please try again.');
+      console.error('Error fetching bookings:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {!hotelId && <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search bookings..."
-              className="w-[300px] pl-9"
-            />
-          </div>
-        </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          New Booking
-        </Button>
-      </div>}
+  useEffect(() => {
+    fetchBookings();
+  }, [hotelId]);
 
+  if (loading) {
+    return (
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Hotel</TableHead>
               <TableHead>Guest</TableHead>
-              <TableHead>Dates</TableHead>
+              <TableHead>Check In</TableHead>
+              <TableHead>Check Out</TableHead>
               <TableHead>Room Type</TableHead>
-              <TableHead>Amount</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Total</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {bookings.map((booking) => (
-              <TableRow
-                key={booking.id}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => setSelectedBooking(booking)}
-              >
-                <TableCell className="font-medium">
-                  {booking.hotelName}
-                </TableCell>
-                <TableCell>{booking.guestName}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      {booking.checkIn.toLocaleDateString()} -{' '}
-                      {booking.checkOut.toLocaleDateString()}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>{booking.roomType}</TableCell>
-                <TableCell>${booking.totalAmount.toLocaleString()}</TableCell>
-                <TableCell>
-                  <Badge className={getStatusColor(booking.status)}>
-                    {booking.status}
-                  </Badge>
-                </TableCell>
+            {[...Array(5)].map((_, i) => (
+              <TableRow key={i}>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-16" /></TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border border-destructive/50 bg-destructive/10 p-8">
+        <AlertCircle className="h-8 w-8 text-destructive" />
+        <p className="mt-2 font-medium text-destructive">{error}</p>
+        <Button onClick={fetchBookings} variant="outline" className="mt-4">
+          <RefreshCcw className="mr-2 h-4 w-4" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Hotel</TableHead>
+            <TableHead>Guest</TableHead>
+            <TableHead>Check In</TableHead>
+            <TableHead>Check Out</TableHead>
+            <TableHead>Room Type</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Total</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {bookings.map((booking) => (
+            <TableRow 
+              key={booking.id}
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => setSelectedBooking(booking)}
+            >
+              <TableCell>{booking.hotelName}</TableCell>
+              <TableCell>{booking.guestName}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  {new Date(booking.checkIn).toLocaleDateString()}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  {new Date(booking.checkOut).toLocaleDateString()}
+                </div>
+              </TableCell>
+              <TableCell>{booking.roomType}</TableCell>
+              <TableCell>
+                <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>
+                  {booking.status}
+                </Badge>
+              </TableCell>
+              <TableCell>${booking.totalAmount}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
       <BookingDetailsDialog
         booking={selectedBooking}
         open={!!selectedBooking}

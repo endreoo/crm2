@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Booking } from '@/types';
-import { Building2, Calendar, User, Ticket } from 'lucide-react';
+import { Building2, Calendar, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import GuestsView from './GuestsView';
 import HotelsView from './HotelsView';
@@ -78,12 +78,12 @@ export default function BookingDetailsDialog({
           </TabsContent>
           <TabsContent value="guest" className="mt-4">
             <div className="rounded-md border">
-              <GuestsView bookingId={booking.id} variant="list" />
+              <GuestsView variant="list" />
             </div>
           </TabsContent>
           <TabsContent value="tickets" className="mt-4">
             <div className="rounded-md border">
-              <TicketsView bookingId={booking.id} variant="list" />
+              <TicketsView variant="list" />
             </div>
           </TabsContent>
         </Tabs>

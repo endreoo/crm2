@@ -3,23 +3,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Hotel } from '@/types';
-import { Building2, MapPin, Star, Users } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import ContactsView from './ContactsView';
-import BookingsView from './BookingsView';
-import GuestsView from './GuestsView';
-import TicketsView from './TicketsView';
 
 interface HotelDetailsDialogProps {
   hotel: Hotel | null;
@@ -34,63 +22,62 @@ export default function HotelDetailsDialog({
 }: HotelDetailsDialogProps) {
   if (!hotel) return null;
 
+  const location = hotel.city && hotel.country 
+    ? `${hotel.city}, ${hotel.country}`
+    : hotel.location || hotel.address;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
-                <span>{hotel.name}</span>
-              </div>
-              <Badge variant="secondary">{hotel.status}</Badge>
-            </div>
-          </DialogTitle>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
+          <DialogTitle>{hotel.name}</DialogTitle>
+          <DialogDescription>
+            <div className="flex items-center gap-2 text-muted-foreground">
               <MapPin className="h-4 w-4" />
-              {hotel.city}, {hotel.country}
+              {location}
             </div>
-            <div className="flex items-center gap-1">
-              <Users className="h-4 w-4" />
-              {hotel.rooms} Rooms
-            </div>
-            <div className="flex items-center gap-1">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              {hotel.rating}
-            </div>
-          </div>
+          </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="contacts" className="mt-6">
-          <TabsList>
-            <TabsTrigger value="contacts">Contacts</TabsTrigger>
-            <TabsTrigger value="bookings">Bookings</TabsTrigger>
-            <TabsTrigger value="guests">Guests</TabsTrigger>
-            <TabsTrigger value="tickets">Tickets</TabsTrigger>
-          </TabsList>
-          <TabsContent value="contacts" className="mt-4">
-            <div className="rounded-md border">
-              <ContactsView hotelId={hotel.id} variant="list" />
+        <div className="grid gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-medium">Reviews</h4>
+              <p className="text-sm text-muted-foreground">
+                {hotel.google_number_of_reviews || 'N/A'}
+              </p>
             </div>
-          </TabsContent>
-          <TabsContent value="bookings" className="mt-4">
-            <div className="rounded-md border">
-              <BookingsView hotelId={hotel.id} variant="list" />
+            <div>
+              <h4 className="font-medium">Rating</h4>
+              <p className="text-sm text-muted-foreground">
+                {hotel.google_review_score || 'N/A'}
+              </p>
             </div>
-          </TabsContent>
-          <TabsContent value="guests" className="mt-4">
-            <div className="rounded-md border">
-              <GuestsView hotelId={hotel.id} variant="list" />
+            <div>
+              <h4 className="font-medium">Segment</h4>
+              <p className="text-sm text-muted-foreground">
+                {hotel.segment || 'N/A'}
+              </p>
             </div>
-          </TabsContent>
-          <TabsContent value="tickets" className="mt-4">
-            <div className="rounded-md border">
-              <TicketsView hotelId={hotel.id} variant="list" />
+            <div>
+              <h4 className="font-medium">Sales Process</h4>
+              <p className="text-sm text-muted-foreground">
+                {hotel.sales_process || 'N/A'}
+              </p>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-2">Amenities</h4>
+            <div className="flex flex-wrap gap-2">
+              {hotel.amenities.map((amenity) => (
+                <Badge key={amenity} variant="secondary">
+                  {amenity}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

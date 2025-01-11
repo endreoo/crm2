@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Contact } from '@/types';
-import { Mail, Phone, Building2, CalendarDays, Ticket } from 'lucide-react';
+import { Mail, Phone, Building2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import BookingsView from './BookingsView';
 import HotelsView from './HotelsView';
@@ -73,7 +73,7 @@ export default function ContactDetailsDialog({
           </TabsContent>
           <TabsContent value="tickets" className="mt-4">
             <div className="rounded-md border">
-              <TicketsView contactId={contact.id} variant="list" />
+              <TicketsView variant="list" />
             </div>
           </TabsContent>
         </Tabs>

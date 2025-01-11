@@ -207,16 +207,77 @@ export const api = {
       }
     },
 
-    async getAll(page = 1, limit = 50, sort?: HotelSortOptions): Promise<PaginatedResponse<Hotel>> {
+    async getAll(
+      page = 1, 
+      limit = 50, 
+      sort?: HotelSortOptions,
+      filters?: {
+        location?: string;
+        segment?: string;
+        sales_process?: string;
+        search?: string;
+      }
+    ): Promise<PaginatedResponse<Hotel>> {
       try {
         if (!auth.isAuthenticated()) {
           await auth.login('admin@hotelonline.co', 'admin123');
         }
 
-        const sortField = sort ? SORT_FIELD_MAP[sort.field] : undefined;
-        const sortParams = sort ? `&sortBy=${sortField}&order=${sort.order}` : '';
-        const url = `${API_BASE_URL}/api/hotels/sort?page=${page}&limit=${limit}${sortParams}`;
+        // Use search endpoint for location filtering
+        if (filters?.location && filters.location !== 'all_locations') {
+          const params = new URLSearchParams({
+            q: filters.location,
+            page: page.toString(),
+            limit: limit.toString()
+          });
 
+          if (sort) {
+            params.append('sortBy', SORT_FIELD_MAP[sort.field]);
+            params.append('order', sort.order);
+          }
+
+          const searchUrl = `${API_BASE_URL}/api/hotels/search?${params.toString()}`;
+          console.log('Searching hotels by location:', searchUrl);
+          
+          const searchResponse = await fetchWithRetry(
+            searchUrl,
+            { 
+              headers: getHeaders(),
+              method: 'GET',
+              cache: 'no-cache'
+            }
+          );
+
+          // Transform the response to match our interface
+          const hotels = Array.isArray(searchResponse) ? searchResponse : [];
+          return {
+            data: hotels.map(transformHotel),
+            total: hotels.length,
+            pages: Math.ceil(hotels.length / limit)
+          };
+        }
+
+        // For other cases, use the regular endpoint
+        const params = new URLSearchParams();
+        params.append('page', page.toString());
+        params.append('limit', limit.toString());
+
+        if (sort) {
+          params.append('sortBy', SORT_FIELD_MAP[sort.field]);
+          params.append('order', sort.order);
+        }
+
+        if (filters?.segment && filters.segment !== 'all_segments') {
+          params.append('segment', filters.segment);
+        }
+        if (filters?.sales_process && filters.sales_process !== 'all_processes') {
+          params.append('salesProcess', filters.sales_process);
+        }
+        if (filters?.search) {
+          params.append('q', filters.search);
+        }
+
+        const url = `${API_BASE_URL}/api/hotels?${params.toString()}`;
         console.log('Fetching hotels with URL:', url);
 
         const response = await fetchWithRetry(

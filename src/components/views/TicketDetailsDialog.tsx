@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Ticket } from '@/types';
-import { Building2, CalendarDays, User } from 'lucide-react';
+import { Building2, CalendarDays } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import BookingsView from './BookingsView';
@@ -112,12 +112,12 @@ export default function TicketDetailsDialog({
           </TabsContent>
           <TabsContent value="booking" className="mt-4">
             <div className="rounded-md border">
-              <BookingsView ticketId={ticket.id} variant="list" />
+              <BookingsView variant="list" />
             </div>
           </TabsContent>
           <TabsContent value="guest" className="mt-4">
             <div className="rounded-md border">
-              <GuestsView ticketId={ticket.id} variant="list" />
+              <GuestsView variant="list" />
             </div>
           </TabsContent>
         </Tabs>

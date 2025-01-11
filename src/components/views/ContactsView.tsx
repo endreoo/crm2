@@ -1,6 +1,5 @@
-import { Plus, Search, Mail, Phone } from 'lucide-react';
+import { AlertCircle, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -9,105 +8,119 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { ViewProps, Contact } from '@/types';
+import { api } from '@/lib/api';
+import { Skeleton } from '@/components/ui/skeleton';
 import ContactDetailsDialog from './ContactDetailsDialog';
 
-interface ContactsViewProps {
-  hotelId?: string;
-  variant?: 'list' | 'grid';
-}
+export default function ContactsView({ hotelId }: ViewProps) {
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-export default function ContactsView({ hotelId, variant = 'grid' }: ContactsViewProps) {
-  const [selectedContact, setSelectedContact] = useState<any>(null);
+  const fetchContacts = async () => {
+    try {
+      setLoading(true);
+      const response = await api.contacts.getAll();
+      const filteredContacts = hotelId
+        ? response.filter(contact => contact.hotelId === hotelId)
+        : response;
+      setContacts(filteredContacts);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch contacts. Please try again.');
+      console.error('Error fetching contacts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Placeholder data - will be replaced with API data
-  const contacts = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      phone: '+1 234 567 890',
-      company: 'Travel Corp',
-      role: 'Travel Agent',
-      lastContact: new Date('2024-03-15'),
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      phone: '+1 234 567 891',
-      company: 'Business Travel Ltd',
-      role: 'Corporate Client',
-      lastContact: new Date('2024-03-10'),
-    },
-  ];
+  useEffect(() => {
+    fetchContacts();
+  }, [hotelId]);
 
-  const filteredContacts = hotelId 
-    ? contacts.filter(contact => contact.hotelId === hotelId)
-    : contacts;
-
-  return (
-    <div className="space-y-6">
-      {!hotelId && <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search contacts..."
-              className="w-[300px] pl-9"
-            />
-          </div>
-        </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Contact
-        </Button>
-      </div>}
-
+  if (loading) {
+    return (
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Contact Info</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>Company</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Last Contact</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {contacts.map((contact) => (
-              <TableRow 
-                key={contact.id}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => setSelectedContact(contact)}
-              >
-                <TableCell className="font-medium">{contact.name}</TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      {contact.email}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      {contact.phone}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{contact.company}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{contact.role}</Badge>
-                </TableCell>
-                <TableCell>
-                  {contact.lastContact.toLocaleDateString()}
-                </TableCell>
+            {[...Array(5)].map((_, i) => (
+              <TableRow key={i}>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border border-destructive/50 bg-destructive/10 p-8">
+        <AlertCircle className="h-8 w-8 text-destructive" />
+        <p className="mt-2 font-medium text-destructive">{error}</p>
+        <Button onClick={fetchContacts} variant="outline" className="mt-4">
+          <RefreshCcw className="mr-2 h-4 w-4" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Phone</TableHead>
+            <TableHead>Company</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Last Contact</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {contacts.map((contact) => (
+            <TableRow 
+              key={contact.id}
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => setSelectedContact(contact)}
+            >
+              <TableCell>{contact.name}</TableCell>
+              <TableCell>{contact.email}</TableCell>
+              <TableCell>{contact.phone}</TableCell>
+              <TableCell>{contact.company || 'N/A'}</TableCell>
+              <TableCell>{contact.role || 'N/A'}</TableCell>
+              <TableCell>
+                {contact.lastContact 
+                  ? new Date(contact.lastContact).toLocaleDateString()
+                  : 'N/A'
+                }
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
       <ContactDetailsDialog
         contact={selectedContact}
         open={!!selectedContact}

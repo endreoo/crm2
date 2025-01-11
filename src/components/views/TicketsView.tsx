@@ -1,6 +1,9 @@
-import { Plus, Search } from 'lucide-react';
+import { ViewProps, Ticket } from '@/types';
+import { api } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { AlertCircle, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -10,147 +13,122 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useState } from 'react';
 import TicketDetailsDialog from './TicketDetailsDialog';
 
-interface TicketsViewProps {
-  hotelId?: string;
-  variant?: 'list' | 'grid';
-}
+export default function TicketsView({ hotelId }: ViewProps) {
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-export default function TicketsView({ hotelId, variant = 'grid' }: TicketsViewProps) {
-  const [selectedTicket, setSelectedTicket] = useState<any>(null);
-
-  // Placeholder data - will be replaced with API data
-  const tickets = [
-    {
-      id: '1',
-      title: 'Room Service Delay',
-      description: 'Guest reported delayed room service delivery',
-      status: 'open',
-      priority: 'high',
-      createdAt: new Date('2024-03-15T10:30:00'),
-      assignedTo: 'Sarah Wilson',
-      bookingId: 'B123',
-    },
-    {
-      id: '2',
-      title: 'AC Not Working',
-      description: 'AC unit in room 304 needs maintenance',
-      status: 'in-progress',
-      priority: 'medium',
-      createdAt: new Date('2024-03-14T15:45:00'),
-      assignedTo: 'Mike Brown',
-      bookingId: 'B124',
-    },
-  ];
-
-  const filteredTickets = hotelId 
-    ? tickets.filter(ticket => ticket.hotelId === hotelId)
-    : tickets;
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'open':
-        return 'bg-blue-500/15 text-blue-700 dark:text-blue-400';
-      case 'in-progress':
-        return 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400';
-      case 'resolved':
-        return 'bg-green-500/15 text-green-700 dark:text-green-400';
-      default:
-        return '';
+  const fetchTickets = async () => {
+    try {
+      setLoading(true);
+      const response = await api.tickets.getAll();
+      const filteredTickets = hotelId
+        ? response.filter(ticket => ticket.hotelId === hotelId)
+        : response;
+      setTickets(filteredTickets);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch tickets. Please try again.');
+      console.error('Error fetching tickets:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-red-500/15 text-red-700 dark:text-red-400';
-      case 'medium':
-        return 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400';
-      case 'low':
-        return 'bg-green-500/15 text-green-700 dark:text-green-400';
-      default:
-        return '';
-    }
-  };
+  useEffect(() => {
+    fetchTickets();
+  }, [hotelId]);
 
-  return (
-    <div className="space-y-6">
-      {!hotelId && <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search tickets..."
-              className="w-[300px] pl-9"
-            />
-          </div>
-        </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Ticket
-        </Button>
-      </div>}
-
+  if (loading) {
+    return (
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
+              <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Priority</TableHead>
-              <TableHead>Assigned To</TableHead>
               <TableHead>Created</TableHead>
+              <TableHead>Assigned To</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tickets.map((ticket) => (
-              <TableRow
-                key={ticket.id}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => setSelectedTicket(ticket)}
-              >
-                <TableCell>
-                  <div className="space-y-1">
-                    <div className="font-medium">{ticket.title}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {ticket.description}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className={getStatusColor(ticket.status)}>
-                    {ticket.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge className={getPriorityColor(ticket.priority)}>
-                    {ticket.priority}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback>
-                        {ticket.assignedTo
-                          .split(' ')
-                          .map((n) => n[0])
-                          .join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>{ticket.assignedTo}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {ticket.createdAt.toLocaleDateString()}
-                </TableCell>
+            {[...Array(5)].map((_, i) => (
+              <TableRow key={i}>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border border-destructive/50 bg-destructive/10 p-8">
+        <AlertCircle className="h-8 w-8 text-destructive" />
+        <p className="mt-2 font-medium text-destructive">{error}</p>
+        <Button onClick={fetchTickets} variant="outline" className="mt-4">
+          <RefreshCcw className="mr-2 h-4 w-4" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Title</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Priority</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead>Assigned To</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tickets.map((ticket) => (
+            <TableRow 
+              key={ticket.id}
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => setSelectedTicket(ticket)}
+            >
+              <TableCell>{ticket.title}</TableCell>
+              <TableCell>{ticket.description}</TableCell>
+              <TableCell>
+                <Badge variant={ticket.status === 'resolved' ? 'default' : 'secondary'}>
+                  {ticket.status}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Badge variant={
+                  ticket.priority === 'high' ? 'destructive' :
+                  ticket.priority === 'medium' ? 'secondary' :
+                  'outline'
+                }>
+                  {ticket.priority}
+                </Badge>
+              </TableCell>
+              <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
+              <TableCell>{ticket.assignedTo || 'Unassigned'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
       <TicketDetailsDialog
         ticket={selectedTicket}
         open={!!selectedTicket}

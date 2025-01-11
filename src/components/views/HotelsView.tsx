@@ -36,6 +36,7 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -72,22 +73,33 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
       } else {
         setLoading(true);
       }
+      setFilterLoading(true);
       setError(null);
 
       if (!auth.isAuthenticated()) {
         await auth.login('admin@hotelonline.co', 'admin123');
       }
 
-      // Always fetch fresh data when sorting
+      // Send filters to API
       const response = await api.hotels.getAll(pageNum, pageSize, {
         field: sortField,
         order: sortOrder
+      }, {
+        location: locationFilter !== ALL_VALUES.location ? locationFilter : undefined,
+        segment: segmentFilter !== ALL_VALUES.segment ? segmentFilter : undefined,
+        sales_process: salesProcessFilter !== ALL_VALUES.process ? salesProcessFilter : undefined,
+        search: searchTerm || undefined
       });
       
-      console.log(`Loaded hotels page ${pageNum} with sort:`, { field: sortField, order: sortOrder });
+      console.log(`Loaded hotels page ${pageNum} with filters:`, {
+        location: locationFilter,
+        segment: segmentFilter,
+        sales_process: salesProcessFilter,
+        search: searchTerm
+      });
       
-      // Never append when sorting changes
       setHotels(response.data);
+      setFilteredHotels(response.data);
       setTotalPages(response.pages);
       setTotalHotels(response.total);
     } catch (err: any) {
@@ -101,8 +113,21 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
     } finally {
       setLoading(false);
       setLoadingMore(false);
+      setFilterLoading(false);
     }
-  }, [pageSize, sortField, sortOrder]);
+  }, [pageSize, sortField, sortOrder, locationFilter, segmentFilter, salesProcessFilter, searchTerm]);
+
+  // Update effect to refetch when filters change
+  useEffect(() => {
+    console.log('Filters changed, fetching new data');
+    setPage(1);
+    fetchHotels(1, false);
+  }, [locationFilter, segmentFilter, salesProcessFilter, searchTerm, sortField, sortOrder, pageSize]);
+
+  // Remove the local filtering effect since filtering is now handled by the API
+  useEffect(() => {
+    setFilteredHotels(hotels);
+  }, [hotels]);
 
   // Add sort function
   const handleSort = (field: HotelSortOptions['field']) => {
@@ -154,34 +179,6 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
       <ArrowUp className="h-4 w-4 text-primary" /> : 
       <ArrowDown className="h-4 w-4 text-primary" />;
   };
-
-  // Update filtering effect
-  useEffect(() => {
-    // Only apply local filters that aren't handled by the API
-    let result = [...hotels];
-
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      result = result.filter(hotel => 
-        hotel.name.toLowerCase().includes(search) ||
-        hotel.location.toLowerCase().includes(search)
-      );
-    }
-
-    if (locationFilter && locationFilter !== ALL_VALUES.location) {
-      result = result.filter(hotel => hotel.location === locationFilter);
-    }
-
-    if (segmentFilter && segmentFilter !== ALL_VALUES.segment) {
-      result = result.filter(hotel => (hotel.segment || 'N/A') === segmentFilter);
-    }
-
-    if (salesProcessFilter && salesProcessFilter !== ALL_VALUES.process) {
-      result = result.filter(hotel => (hotel.sales_process || 'N/A') === salesProcessFilter);
-    }
-
-    setFilteredHotels(result);
-  }, [hotels, searchTerm, locationFilter, segmentFilter, salesProcessFilter]);
 
   if (variant === 'list') {
     return (
@@ -237,11 +234,21 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
               className="w-[300px] pl-9"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              disabled={filterLoading}
             />
           </div>
-          <Select value={locationFilter} onValueChange={setLocationFilter}>
+          <Select 
+            value={locationFilter} 
+            onValueChange={setLocationFilter}
+            disabled={filterLoading}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by location" />
+              {filterLoading && (
+                <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                </div>
+              )}
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_VALUES.location}>All locations</SelectItem>
@@ -250,9 +257,18 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
               ))}
             </SelectContent>
           </Select>
-          <Select value={segmentFilter} onValueChange={setSegmentFilter}>
+          <Select 
+            value={segmentFilter} 
+            onValueChange={setSegmentFilter}
+            disabled={filterLoading}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by segment" />
+              {filterLoading && (
+                <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                </div>
+              )}
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_VALUES.segment}>All segments</SelectItem>
@@ -261,9 +277,18 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
               ))}
             </SelectContent>
           </Select>
-          <Select value={salesProcessFilter} onValueChange={setSalesProcessFilter}>
+          <Select 
+            value={salesProcessFilter} 
+            onValueChange={setSalesProcessFilter}
+            disabled={filterLoading}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by sales process" />
+              {filterLoading && (
+                <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                </div>
+              )}
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_VALUES.process}>All processes</SelectItem>
@@ -273,7 +298,7 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
             </SelectContent>
           </Select>
         </div>
-        <Button>
+        <Button disabled={filterLoading}>
           <Plus className="mr-2 h-4 w-4" />
           Add Hotel
         </Button>
@@ -298,7 +323,15 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
           </div>
         ) : (
           <>
-            <div className="rounded-md border">
+            <div className="rounded-md border relative">
+              {filterLoading && (
+                <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-50">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                    <p className="text-sm text-muted-foreground">Updating results...</p>
+                  </div>
+                </div>
+              )}
               <Table>
                 <TableHeader>
                   <TableRow>
