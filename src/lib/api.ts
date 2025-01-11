@@ -232,12 +232,6 @@ export const api = {
           params.append('page', page.toString());
           params.append('limit', limit.toString());
 
-          // Add sorting parameters
-          if (sort) {
-            params.append('sortBy', SORT_FIELD_MAP[sort.field]);
-            params.append('order', sort.order);
-          }
-
           const url = `${API_BASE_URL}/api/hotels/search?${params.toString()}`;
           console.log('Searching hotels by location:', url);
 
@@ -251,8 +245,19 @@ export const api = {
           );
 
           // Handle array response from search endpoint
-          const hotels = Array.isArray(response) ? response : 
-                        (response?.data || []);
+          let hotels = Array.isArray(response) ? response : 
+                      (response?.data || []);
+
+          // Apply sorting to filtered results
+          if (sort) {
+            const field = SORT_FIELD_MAP[sort.field];
+            hotels = hotels.sort((a: Record<string, any>, b: Record<string, any>) => {
+              const aValue = a[field] || '';
+              const bValue = b[field] || '';
+              const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+              return sort.order === 'asc' ? comparison : -comparison;
+            });
+          }
 
           return {
             data: hotels.map(transformHotel),
