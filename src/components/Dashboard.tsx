@@ -44,7 +44,7 @@ const navigation = [
 
 export default function Dashboard() {
   return (
-    <div className="flex w-72 flex-col gap-y-5 border-r bg-white px-6">
+    <div className="flex w-56 flex-col gap-y-5 border-r bg-white px-6">
       <div className="flex h-16 shrink-0 items-center">
         <img
           className="h-8 w-auto"

@@ -225,22 +225,24 @@ export const api = {
 
         // Use search endpoint for location filtering
         if (filters?.location && filters.location !== 'all_locations') {
-          const params = new URLSearchParams({
-            q: filters.location,
-            page: page.toString(),
-            limit: limit.toString()
-          });
+          const params = new URLSearchParams();
+          
+          // Add location filter
+          params.append('q', filters.location);
+          params.append('page', page.toString());
+          params.append('limit', limit.toString());
 
+          // Add sorting parameters
           if (sort) {
             params.append('sortBy', SORT_FIELD_MAP[sort.field]);
             params.append('order', sort.order);
           }
 
-          const searchUrl = `${API_BASE_URL}/api/hotels/search?${params.toString()}`;
-          console.log('Searching hotels by location:', searchUrl);
-          
-          const searchResponse = await fetchWithRetry(
-            searchUrl,
+          const url = `${API_BASE_URL}/api/hotels/search?${params.toString()}`;
+          console.log('Searching hotels by location:', url);
+
+          const response = await fetchWithRetry(
+            url,
             { 
               headers: getHeaders(),
               method: 'GET',
@@ -248,8 +250,10 @@ export const api = {
             }
           );
 
-          // Transform the response to match our interface
-          const hotels = Array.isArray(searchResponse) ? searchResponse : [];
+          // Handle array response from search endpoint
+          const hotels = Array.isArray(response) ? response : 
+                        (response?.data || []);
+
           return {
             data: hotels.map(transformHotel),
             total: hotels.length,
@@ -257,10 +261,11 @@ export const api = {
           };
         }
 
-        // For other cases, use the regular endpoint
-        const params = new URLSearchParams();
-        params.append('page', page.toString());
-        params.append('limit', limit.toString());
+        // For other filters, use the sort endpoint
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: limit.toString()
+        });
 
         if (sort) {
           params.append('sortBy', SORT_FIELD_MAP[sort.field]);
@@ -277,7 +282,7 @@ export const api = {
           params.append('q', filters.search);
         }
 
-        const url = `${API_BASE_URL}/api/hotels?${params.toString()}`;
+        const url = `${API_BASE_URL}/api/hotels/sort?${params.toString()}`;
         console.log('Fetching hotels with URL:', url);
 
         const response = await fetchWithRetry(
@@ -322,6 +327,24 @@ export const api = {
         };
       } catch (error) {
         console.error('Error searching hotels:', error);
+        throw error;
+      }
+    },
+
+    async getAllLocations(): Promise<string[]> {
+      try {
+        if (!auth.isAuthenticated()) {
+          await auth.login('admin@hotelonline.co', 'admin123');
+        }
+
+        const response = await fetchWithRetry(
+          `${API_BASE_URL}/api/hotels/locations`,
+          { headers: getHeaders() }
+        );
+
+        return Array.isArray(response) ? response.sort() : [];
+      } catch (error) {
+        console.error('Error fetching locations:', error);
         throw error;
       }
     }

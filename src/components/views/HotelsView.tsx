@@ -49,12 +49,27 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
   const [pageSize, setPageSize] = useState<number>(20);
   const [sortField, setSortField] = useState<HotelSortOptions['field']>('name');
   const [sortOrder, setSortOrder] = useState<HotelSortOptions['order']>('asc');
+  const [filteredLocations, setFilteredLocations] = useState<string[]>([]);
+  const [allLocations, setAllLocations] = useState<string[]>([]);
 
-  // Extract unique values for filters
-  const locations = useMemo(() => {
-    const uniqueLocations = new Set(hotels.map(hotel => hotel.location));
-    return Array.from(uniqueLocations).sort();
-  }, [hotels]);
+  // Fetch all locations when component mounts
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const locations = await api.hotels.getAllLocations();
+        setAllLocations(locations);
+        setFilteredLocations(locations);
+      } catch (error) {
+        console.error('Failed to fetch locations:', error);
+      }
+    };
+    fetchLocations();
+  }, []);
+
+  // Initialize filtered locations when locations change
+  useEffect(() => {
+    setFilteredLocations(allLocations);
+  }, [allLocations]);
 
   const segments = useMemo(() => {
     const uniqueSegments = new Set(hotels.map(hotel => hotel.segment || 'N/A'));
@@ -91,11 +106,14 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
         search: searchTerm || undefined
       });
       
-      console.log(`Loaded hotels page ${pageNum} with filters:`, {
-        location: locationFilter,
-        segment: segmentFilter,
-        sales_process: salesProcessFilter,
-        search: searchTerm
+      console.log(`Loaded hotels page ${pageNum}:`, {
+        filters: {
+          location: locationFilter,
+          segment: segmentFilter,
+          sales_process: salesProcessFilter,
+          search: searchTerm
+        },
+        sort: { field: sortField, order: sortOrder }
       });
       
       setHotels(response.data);
@@ -115,43 +133,34 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
       setLoadingMore(false);
       setFilterLoading(false);
     }
-  }, [pageSize, sortField, sortOrder, locationFilter, segmentFilter, salesProcessFilter, searchTerm]);
-
-  // Update effect to refetch when filters change
-  useEffect(() => {
-    console.log('Filters changed, fetching new data');
-    setPage(1);
-    fetchHotels(1, false);
-  }, [locationFilter, segmentFilter, salesProcessFilter, searchTerm, sortField, sortOrder, pageSize]);
-
-  // Remove the local filtering effect since filtering is now handled by the API
-  useEffect(() => {
-    setFilteredHotels(hotels);
-  }, [hotels]);
+  }, [pageSize, locationFilter, segmentFilter, salesProcessFilter, searchTerm, sortField, sortOrder]);
 
   // Add sort function
   const handleSort = (field: HotelSortOptions['field']) => {
     console.log('Sorting by:', field);
-    const newOrder = sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
+    const newOrder: HotelSortOptions['order'] = field === sortField && sortOrder === 'asc' ? 'desc' : 'asc';
     
     // Update sort state
     setSortField(field);
     setSortOrder(newOrder);
     
-    // Reset page and trigger reload
+    // Reset page and fetch data
     setPage(1);
     
-    console.log('New sort state:', {
-      field: field,
-      order: newOrder
-    });
+    console.log('New sort state:', { field, order: newOrder });
   };
 
-  // Refetch when sort or page size changes
+  // Update effect to refetch when filters or sort changes
   useEffect(() => {
-    console.log('Fetching with sort:', { field: sortField, order: sortOrder });
+    console.log('Filters or sort changed, fetching new data');
+    setPage(1);
     fetchHotels(1, false);
-  }, [sortField, sortOrder, pageSize]);
+  }, [locationFilter, segmentFilter, salesProcessFilter, searchTerm, pageSize, sortField, sortOrder]);
+
+  // Remove the local filtering effect since filtering is now handled by the API
+  useEffect(() => {
+    setFilteredHotels(hotels);
+  }, [hotels]);
 
   // Handle page changes
   const handleNextPage = useCallback(() => {
@@ -251,8 +260,24 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
               )}
             </SelectTrigger>
             <SelectContent>
+              <div className="p-2">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search locations..."
+                    className="pl-8"
+                    onChange={(e) => {
+                      const searchValue = e.target.value.toLowerCase();
+                      const filtered = allLocations.filter(loc => 
+                        loc.toLowerCase().includes(searchValue)
+                      );
+                      setFilteredLocations(filtered);
+                    }}
+                  />
+                </div>
+              </div>
               <SelectItem value={ALL_VALUES.location}>All locations</SelectItem>
-              {locations.map((location: string) => (
+              {(filteredLocations.length > 0 ? filteredLocations : allLocations).map((location: string) => (
                 <SelectItem key={location} value={location}>{location}</SelectItem>
               ))}
             </SelectContent>
@@ -345,7 +370,7 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="cursor-pointer hover:bg-muted/50 w-[200px]"
+                      className="cursor-pointer hover:bg-muted/50 w-[150px]"
                       onClick={() => handleSort('location')}
                     >
                       <div className="flex items-center gap-2">
@@ -400,7 +425,7 @@ export default function HotelsView({ variant = 'grid' }: ViewProps) {
                           <div className="font-medium">{hotel.name}</div>
                         </div>
                       </TableCell>
-                      <TableCell className="w-[200px]">
+                      <TableCell className="w-[150px]">
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
                           {hotel.location}
